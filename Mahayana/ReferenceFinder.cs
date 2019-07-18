@@ -13,6 +13,7 @@ namespace Mayahana
         private ReferenceFinder()
         {
             this.searchedSymbols = new HashSet<ISymbol>();
+            this.navigator = new CodeNavigator();
         }
 
         internal ReferenceFinder(SolutionExplorer solution, Document document, string[] namespaces, int[] codeLines) : this()
@@ -42,6 +43,7 @@ namespace Mayahana
         private Document startingDocument;
         private HashSet<ISymbol> searchedSymbols;
         private ReferenceFinderResult results;
+        private CodeNavigator navigator;
 
         private IEnumerable<ReferenceFinderResult.Item> FindAllReferencesForDocument()
         {
@@ -93,7 +95,7 @@ namespace Mayahana
                     var currentStack = previousStack.Clone();
 
                     var location = locationRef.Location;
-                    var memberDeclaration = FindMemberDeclaration(location);
+                    var memberDeclaration = navigator.FindClosestDeclaration(location);
                     currentStack.Add(memberDeclaration);
 
                     if (IsValidNamespace(location))
@@ -107,37 +109,11 @@ namespace Mayahana
                     }
                 }
             }
-        }
-
-        private MemberDeclarationSyntax FindMemberDeclaration(Location location)
-        {
-            var ancestors = GetAncestors(location);
-
-            var methodDeclaration = ancestors.OfType<MethodDeclarationSyntax>().FirstOrDefault();
-            if (methodDeclaration != null)
-                return methodDeclaration;
-
-            var constructorDeclaration = ancestors.OfType<ConstructorDeclarationSyntax>().FirstOrDefault();
-            if (constructorDeclaration != null)
-                return constructorDeclaration;
-
-            var propertyDeclaration = ancestors.OfType<PropertyDeclarationSyntax>().FirstOrDefault();
-            if (propertyDeclaration != null)
-                return propertyDeclaration;
-
-            // In case its used in the generics, or something wrong happened...
-            var classDeclaration = ancestors.OfType<ClassDeclarationSyntax>().FirstOrDefault();
-            if (classDeclaration != null)
-                return classDeclaration;
-
-            throw new Exception("I dont know where this method call is...");
-        }
+        }        
 
         private bool IsValidNamespace(Location location)
         {
-            var ancestors = GetAncestors(location);
-            var namespaceDeclaration = ancestors.OfType<NamespaceDeclarationSyntax>().First();
-            string locationNamespace = namespaceDeclaration.Name.ToString();
+            string locationNamespace = navigator.GetLocationNamespace(location);
 
             foreach (var ns in namespaces)
             {
@@ -146,11 +122,6 @@ namespace Mayahana
             }
 
             return false;
-        }
-
-        private IEnumerable<SyntaxNode> GetAncestors(Location location)
-        {
-            return location.SourceTree.GetRoot().FindNode(location.SourceSpan).Ancestors();
         }
     }
 }
