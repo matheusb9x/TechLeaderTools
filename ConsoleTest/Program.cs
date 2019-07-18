@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Mahayana;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,9 +16,9 @@ namespace ConsoleApp3
              * The stack trace does not bring property getters and setters.
              */
             
-            string fileName = "filename.cs";
-            string solutionPath = @"path\to\solution";
-            string desiredNamespace = "Your.Namespace.Here";
+            string fileName = "QuestionGraphRandomizationValidator.cs";
+            string solutionPath = @"C:\Users\mathe\Source\meseems-matheusb2\MeSeems-Libs.sln";
+            string desiredNamespace = "MeSeems.Models";
 
             var solution = new SolutionExplorer(solutionPath);
             var doc = solution.GetDocument(fileName);
@@ -29,9 +30,7 @@ namespace ConsoleApp3
             {
                 int i = 0;
 
-                do
-                {
-                    MemberDeclarationSyntax current = result.Pop();
+                foreach (var current in result) {
 
                     if (i > 0)
                         Console.Write("-> ");
@@ -40,7 +39,6 @@ namespace ConsoleApp3
 
                     i++;
                 }
-                while (result.Count > 0);
 
                 Console.WriteLine(" ");
             }

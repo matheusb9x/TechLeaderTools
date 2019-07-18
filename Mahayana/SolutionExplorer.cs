@@ -1,13 +1,12 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Mayahana;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace ConsoleApp3
+namespace Mahayana
 {
     public class SolutionExplorer
     {
@@ -38,25 +37,25 @@ namespace ConsoleApp3
             return result;
         }
 
-        public IEnumerable<ISymbol> GetClassDeclarationsSymbols(Document document)
-        {
-            //var classDeclarations = document
-            //        .GetSyntaxRootAsync().Result
-            //        .DescendantNodes()
-            //        .OfType<ClassDeclarationSyntax>();
+        //public IEnumerable<ISymbol> GetClassDeclarationsSymbols(Document document)
+        //{
+        //    //var classDeclarations = document
+        //    //        .GetSyntaxRootAsync().Result
+        //    //        .DescendantNodes()
+        //    //        .OfType<ClassDeclarationSyntax>();
 
-            //foreach (var classDeclaration in classDeclarations)
-            //{
-            //    yield return GetMethodDeclarationSymbol(document, classDeclaration);
-            //}
+        //    //foreach (var classDeclaration in classDeclarations)
+        //    //{
+        //    //    yield return GetMethodDeclarationSymbol(document, classDeclaration);
+        //    //}
 
-            var firstMethod = document.GetSyntaxRootAsync().Result.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
-            Console.WriteLine("First method name:" + firstMethod.Identifier.ToString() + firstMethod.ParameterList.ToString());
+        //    var firstMethod = document.GetSyntaxRootAsync().Result.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
+        //    Console.WriteLine("First method name:" + firstMethod.Identifier.ToString() + firstMethod.ParameterList.ToString());
 
-            yield return GetMethodDeclarationSymbol(document, firstMethod);
-        }
+        //    yield return GetMemberDeclarationSymbol(document, firstMethod);
+        //}
 
-        public ISymbol GetMethodDeclarationSymbol(Document document, MemberDeclarationSyntax declarationNode)
+        public ISymbol GetMemberDeclarationSymbol(Document document, MemberDeclarationSyntax declarationNode)
         {
             var model = GetSemanticModel(document);
             return model.GetSymbolInfo(declarationNode).Symbol ?? model.GetDeclaredSymbol(declarationNode);
@@ -67,17 +66,17 @@ namespace ConsoleApp3
             return new ReferenceFinder(this, document, namespaces, codeLines);
         }
 
-        public SemanticModel GetSemanticModel(Document document)
+        private Solution solution;
+        private MSBuildWorkspace workspace;
+        private Dictionary<DocumentId, SemanticModel> semanticModelMaps;
+
+        private SemanticModel GetSemanticModel(Document document)
         {
             if (!semanticModelMaps.ContainsKey(document.Id))
                 semanticModelMaps.Add(document.Id, document.GetSemanticModelAsync().Result);
 
             return semanticModelMaps[document.Id];
         }
-
-        private Solution solution;
-        private MSBuildWorkspace workspace;
-        private Dictionary<DocumentId, SemanticModel> semanticModelMaps;
 
         private static void Workspace_WorkspaceFailed(object sender, Microsoft.CodeAnalysis.WorkspaceDiagnosticEventArgs e)
         {

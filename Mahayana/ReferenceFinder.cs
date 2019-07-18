@@ -1,11 +1,12 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Mahayana;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ConsoleApp3
+namespace Mayahana
 {
     public class ReferenceFinder
     {
@@ -22,12 +23,12 @@ namespace ConsoleApp3
             this.codeLines = codeLines;
         }
 
-        public Stack<MemberDeclarationSyntax>[] Results
+        public ReferenceFinderResult.Item[] Results
         {
             get {
                 if (results == null)
                 {
-                    results = new HashSet<Stack<MemberDeclarationSyntax>>();
+                    results = new ReferenceFinderResult();
                     FindAllReferencesForDocument();
                 }
 
@@ -40,40 +41,43 @@ namespace ConsoleApp3
         private int[] codeLines;
         private Document startingDocument;
         private HashSet<ISymbol> searchedSymbols;
-        private HashSet<Stack<MemberDeclarationSyntax>> results;
+        private ReferenceFinderResult results;
 
-        private IEnumerable<Stack<MemberDeclarationSyntax>> FindAllReferencesForDocument()
+        private IEnumerable<ReferenceFinderResult.Item> FindAllReferencesForDocument()
         {
-            var symbols = GetSymbols().ToArray();
+            var symbols = GetLocationSymbols().ToArray();
 
             foreach (var symbol in symbols)
-                foreach (var reference in FindReferencesForSymbol(symbol, new Stack<MemberDeclarationSyntax>()))
+                foreach (var reference in FindReferencesForSymbol(symbol, new ReferenceFinderResult.Item()))
                     if (!results.Contains(reference))
                         results.Add(reference);
 
             return results;
         }
 
-        private IEnumerable<ISymbol> GetSymbols()
+        private IEnumerable<ISymbol> GetLocationSymbols()
         {
             if (codeLines.Length == 0)
-                return solution.GetClassDeclarationsSymbols(startingDocument);
+                throw new ArgumentException("No lines were specified.");
             else
             {
                 var root = startingDocument.GetSyntaxRootAsync().Result.DescendantNodes();
                 var declarations = root.OfType<MethodDeclarationSyntax>().Cast<MemberDeclarationSyntax>()
                     .Union(root.OfType<ConstructorDeclarationSyntax>());
 
-                return codeLines.Select(line => 
-                    declarations.Where(n =>
-                    {
-                        var lineSpan = n.GetLocation().GetLineSpan();
-                        return lineSpan.StartLinePosition.Line < line && lineSpan.EndLinePosition.Line > line;
-                    }).Select(x => solution.GetMethodDeclarationSymbol(startingDocument, x)).First());
+                return codeLines.Select(line =>
+                    declarations
+                        .Where(n => {
+                            var lineSpan = n.GetLocation().GetLineSpan();
+                            return lineSpan.StartLinePosition.Line < line && lineSpan.EndLinePosition.Line > line;
+                        })
+                        .Select(x => solution.GetMemberDeclarationSymbol(startingDocument, x))
+                        .First()
+                );
             }
         }
 
-        private IEnumerable<Stack<MemberDeclarationSyntax>> FindReferencesForSymbol(ISymbol symbol, Stack<MemberDeclarationSyntax> previousStack)
+        private IEnumerable<ReferenceFinderResult.Item> FindReferencesForSymbol(ISymbol symbol, ReferenceFinderResult.Item previousStack)
         {
             if (searchedSymbols.Contains(symbol))
                 yield break;
@@ -86,18 +90,17 @@ namespace ConsoleApp3
             {
                 foreach (var locationRef in reference.Locations)
                 {
-                    var currentStack = new Stack<MemberDeclarationSyntax>(new Stack<MemberDeclarationSyntax>(previousStack));
+                    var currentStack = previousStack.Clone();
 
                     var location = locationRef.Location;
-                    var methodDeclaration = FindMethodDeclaration(location);
-                    currentStack.Push(methodDeclaration);
+                    var memberDeclaration = FindMemberDeclaration(location);
+                    currentStack.Add(memberDeclaration);
 
                     if (IsValidNamespace(location))
                         yield return currentStack;
                     else
                     {
-                        var methodDeclarationSymbol = solution.GetMethodDeclarationSymbol(locationRef.Document, methodDeclaration);
-
+                        var methodDeclarationSymbol = solution.GetMemberDeclarationSymbol(locationRef.Document, memberDeclaration);
                         
                         foreach (var recursiveReference in FindReferencesForSymbol(methodDeclarationSymbol, currentStack))
                             yield return recursiveReference;
@@ -106,11 +109,10 @@ namespace ConsoleApp3
             }
         }
 
-        private MemberDeclarationSyntax FindMethodDeclaration(Location location)
+        private MemberDeclarationSyntax FindMemberDeclaration(Location location)
         {
             var ancestors = GetAncestors(location);
 
-            // TODO: Maybe implement this using polymorphism or a visitor Pattern.
             var methodDeclaration = ancestors.OfType<MethodDeclarationSyntax>().FirstOrDefault();
             if (methodDeclaration != null)
                 return methodDeclaration;
