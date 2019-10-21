@@ -64,6 +64,7 @@ namespace Mayahana
             else
             {
                 var root = startingDocument.GetSyntaxRootAsync().Result.DescendantNodes();
+
                 var declarations = root.OfType<MethodDeclarationSyntax>().Cast<MemberDeclarationSyntax>()
                     .Union(root.OfType<ConstructorDeclarationSyntax>());
 
@@ -71,7 +72,7 @@ namespace Mayahana
                     declarations
                         .Where(n => {
                             var lineSpan = n.GetLocation().GetLineSpan();
-                            return lineSpan.StartLinePosition.Line < line && lineSpan.EndLinePosition.Line > line;
+                            return lineSpan.StartLinePosition.Line <= line && lineSpan.EndLinePosition.Line >= line;
                         })
                         .Select(x => solution.GetMemberDeclarationSymbol(startingDocument, x))
                         .First()

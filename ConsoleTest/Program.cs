@@ -14,16 +14,18 @@ namespace ConsoleApp3
             /*
              * Some thoughts:
              * The stack trace does not bring property getters and setters.
+             * There must be a way to filter out some tokens (don't find references for this tokens) to avoid paths that are too much common and pollute results
              */
-            
-            string fileName = "QuestionGraphRandomizationValidator.cs";
-            string solutionPath = @"C:\Users\mathe\Source\meseems-matheusb2\MeSeems-Libs.sln";
-            string desiredNamespace = "MeSeems.Models";
 
+            string fileName = "";
+            string solutionPath = "";
+            string[] desiredNamespaces = new string[0];
+
+            
             var solution = new SolutionExplorer(solutionPath);
             var doc = solution.GetDocument(fileName);
 
-            var rf = solution.FindReferences(doc, new string[] { desiredNamespace }, new int[] { 24 });
+            var rf = solution.FindReferences(doc, desiredNamespaces, new int[] { 35 });
             var results = rf.Results;
 
             foreach (var result in results)
@@ -49,6 +51,7 @@ namespace ConsoleApp3
 
         private static void WriteStackItem(MemberDeclarationSyntax current)
         {
+            var namespaceIdentifier = current.Ancestors().OfType<NamespaceDeclarationSyntax>().FirstOrDefault()?.Name.ToString();
             var parentIdentifier = current.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault()?.Identifier.ToString();
 
             var methodDeclaration = current as MethodDeclarationSyntax;
@@ -59,11 +62,11 @@ namespace ConsoleApp3
             // TODO: Implement this using polymorphism.
             if (methodDeclaration != null)
             {
-                Console.WriteLine(parentIdentifier + "." + methodDeclaration.Identifier.ToString() + methodDeclaration.ParameterList.ToString());
+                Console.WriteLine(namespaceIdentifier + "." + parentIdentifier + "." + methodDeclaration.Identifier.ToString() + methodDeclaration.ParameterList.ToString());
             }
             else if (constructorDeclaration != null)
             {
-                Console.WriteLine(parentIdentifier + "." + constructorDeclaration.Identifier.ToString() + constructorDeclaration.ParameterList.ToString());
+                Console.WriteLine(namespaceIdentifier + "." + parentIdentifier + "." + constructorDeclaration.Identifier.ToString() + constructorDeclaration.ParameterList.ToString());
             }
             else if (classDeclaration != null)
             {
