@@ -65,8 +65,10 @@ namespace Mayahana
             {
                 var root = startingDocument.GetSyntaxRootAsync().Result.DescendantNodes();
 
-                var declarations = root.OfType<MethodDeclarationSyntax>().Cast<MemberDeclarationSyntax>()
-                    .Union(root.OfType<ConstructorDeclarationSyntax>());
+                IEnumerable<MemberDeclarationSyntax> declarations = root
+                        .OfType<MethodDeclarationSyntax>().Cast<MemberDeclarationSyntax>()
+                        .Union(root.OfType<PropertyDeclarationSyntax>())
+                        .Union(root.OfType<ConstructorDeclarationSyntax>());
 
                 return codeLines.Select(line =>
                     declarations
